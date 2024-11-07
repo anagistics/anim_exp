@@ -101,7 +101,7 @@ int main() {
 
     // Initialize camera
     Camera3D camera = { 0 };
-    camera.position = Vector3{ 0.0f, 0.0f, 1.2f * CUBE_BOUND };
+    camera.position = Vector3{ 0.0f, 0.0f, 0.8f * CUBE_BOUND };
     camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
     camera.fovy = 45.0f;
