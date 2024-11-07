@@ -20,7 +20,8 @@ private:
 
     // Constants for appearance
     const Color SPHERE_COLOR = BLUE;
-    const Color LINE_COLOR = BLUE;
+    const Color LINE_COLOR1 = BLUE;
+    const Color LINE_COLOR2 = DARKBLUE;
     const float MIN_SPEED = 0.01f;
     const float MAX_SPEED = 0.03f;
 
@@ -82,7 +83,10 @@ public:
                 float distance = sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
 
                 if (distance <= connectionThreshold) {
-                    DrawLine3D(p1, p2, LINE_COLOR);
+                    if (distance <= 0.98f * connectionThreshold)
+                        DrawLine3D(p1, p2, LINE_COLOR1);
+                    else
+                        DrawLine3D(p1, p2, LINE_COLOR2);
                 }
             }
         }
