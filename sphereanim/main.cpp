@@ -34,12 +34,14 @@ public:
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> posDist(-CUBE_BOUND / 2.0, CUBE_BOUND / 2.0);
         std::uniform_real_distribution<float> velDist(MIN_SPEED, MAX_SPEED);
+        std::bernoulli_distribution velSign(0.5);
 
         // Initialize spheres with random positions and constant velocities
         for (int i = 0; i < numSpheres; i++) {
             Sphere sphere;
             sphere.position = { posDist(gen), posDist(gen), posDist(gen) };
-            sphere.velocity = { velDist(gen), velDist(gen), velDist(gen) };
+            Vector3 sign = { 1 - 2 * velSign(gen), 1 - 2 * velSign(gen), 1 - 2 * velSign(gen) };
+            sphere.velocity = { sign.x * velDist(gen), sign.y * velDist(gen), sign.z * velDist(gen) };
 
             spheres.push_back(sphere);
         }
@@ -95,8 +97,8 @@ public:
 
 int main() {
     // Initialize window
-    const int screenWidth = 800;
-    const int screenHeight = 600;
+    const int screenWidth = 1600;
+    const int screenHeight = 1200;
     InitWindow(screenWidth, screenHeight, "3D Sphere Connections");
 
     // Initialize camera
