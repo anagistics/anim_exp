@@ -115,33 +115,47 @@ public:
         } 
     }
 
+    template<int arg = 2>
+    void fadeInOut(Sphere& sphere, float rimStart, float rimEnd) const
+    {
+        static constexpr Vector3 color_range = minus(LIGHT, DARK);
+        const float rim_width = rimEnd - rimStart;
+        float* coord = nullptr;
+        if constexpr (arg == 0)
+            coord = &sphere.position.x;
+        else if constexpr (arg == 1)
+            coord = &sphere.position.y;
+        else
+            coord = &sphere.position.z;
+
+        if (*coord < 0)
+        {
+            if (*coord < rimEnd)
+            {
+                sphere.color = COLOR_DARK;
+                sphere.connectable = false;
+            }
+            else if (*coord < rimStart)
+            {
+                const float sf = (rimEnd - *coord) / rim_width;
+                sphere.color = v2c(plus(DARK, scale(color_range, sf)));
+            }
+            else
+                sphere.color = COLOR_LIGHT;
+        }
+        else
+            sphere.color = COLOR_LIGHT;
+    }
+
     void update() {
         static constexpr float rim_end = 0.8f * CUBE_ZMIN;
         static constexpr float rim_start = 0.8f * rim_end;
-        static constexpr float rim_width = rim_end - rim_start;
-        static constexpr Vector3 color_range = minus(LIGHT, DARK);
 
         for (auto& sphere : spheres) {
             // Update position with constant velocity
             sphere.position = plus(sphere.position, sphere.velocity);
             sphere.connectable = true;
-            if (sphere.position.z < 0)
-            {
-                if (sphere.position.z < rim_end)
-                {
-                    sphere.color = COLOR_DARK;
-                    sphere.connectable = false;
-                }
-                else if (sphere.position.z < rim_start)
-                {
-                    const float sf = (rim_end - sphere.position.z) / rim_width;
-                    sphere.color = v2c(plus(DARK, scale(color_range, sf)));
-                }
-                else
-                    sphere.color = COLOR_LIGHT;
-            }
-            else 
-                sphere.color = COLOR_LIGHT;
+            fadeInOut<2>(sphere, rim_start, rim_end);
 
             bounce(sphere.position.x, sphere.velocity.x, CUBE_BOUND/2.0);
             bounce(sphere.position.y, sphere.velocity.y, CUBE_BOUND/2.0);
