@@ -1,8 +1,11 @@
 ﻿// main.cpp
 #include "raylib.h"
+#include "raymath.h"
 #include <vector>
 #include <random>
 #include <cmath>
+#include <sstream>
+#include <string>
 
 constexpr Vector3 minus(const Vector3& left, const Vector3& right)
 {
@@ -45,6 +48,15 @@ constexpr Color colorMean(const Color& left, const Color& right)
     return colorPlus(colorScale(left, 0.5f), colorScale(right, 0.5f));
 }
 
+inline float Norm(Vector3 a)
+{
+    return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+inline float Dist(Vector3 a, Vector3 b)
+{
+    return Norm({ a.x - b.x, a.y - b.y, a.z - b.y });
+}
 
 constexpr float CUBE_BOUND = 20.0f;
 constexpr float CUBE_ZMAX = 10.0f;
@@ -121,40 +133,61 @@ public:
         static constexpr Vector3 color_range = minus(LIGHT, DARK);
         const float rim_width = rimEnd - rimStart;
         float* coord = nullptr;
-        if constexpr (arg == 0)
-            coord = &sphere.position.x;
-        else if constexpr (arg == 1)
-            coord = &sphere.position.y;
-        else
-            coord = &sphere.position.z;
-
-        if (*coord < 0)
+        if constexpr (arg == 0 || arg == 1)
         {
-            if (*coord < rimEnd)
+            if (arg == 0)
+                coord = &sphere.position.x;
+            else
+                coord = &sphere.position.y;
+            float pos = abs(*coord);
+            if (pos > rimEnd)
             {
                 sphere.color = COLOR_DARK;
                 sphere.connectable = false;
             }
-            else if (*coord < rimStart)
+            else if (pos > rimStart)
             {
-                const float sf = (rimEnd - *coord) / rim_width;
+                const float sf = (rimEnd - pos) / rim_width;
                 sphere.color = v2c(plus(DARK, scale(color_range, sf)));
             }
             else
                 sphere.color = COLOR_LIGHT;
         }
         else
-            sphere.color = COLOR_LIGHT;
+        {
+            coord = &sphere.position.z;
+            if (*coord < 0)
+            {
+                if (*coord < rimEnd)
+                {
+                    sphere.color = COLOR_DARK;
+                    sphere.connectable = false;
+                }
+                else if (*coord < rimStart)
+                {
+                    const float sf = (rimEnd - *coord) / rim_width;
+                    sphere.color = v2c(plus(DARK, scale(color_range, sf)));
+                }
+                else
+                    sphere.color = COLOR_LIGHT;
+            }
+            else
+                sphere.color = COLOR_LIGHT;
+        }
     }
 
     void update() {
         static constexpr float rim_end = 0.8f * CUBE_ZMIN;
         static constexpr float rim_start = 0.8f * rim_end;
+        static constexpr float rim_endxy = 0.8f * CUBE_BOUND;
+        static constexpr float rim_startxy = 0.8f * rim_endxy;
 
         for (auto& sphere : spheres) {
             // Update position with constant velocity
             sphere.position = plus(sphere.position, sphere.velocity);
             sphere.connectable = true;
+            fadeInOut<0>(sphere, rim_startxy, rim_endxy);
+            fadeInOut<1>(sphere, rim_startxy, rim_endxy);
             fadeInOut<2>(sphere, rim_start, rim_end);
 
             bounce(sphere.position.x, sphere.velocity.x, CUBE_BOUND/2.0);
@@ -195,6 +228,20 @@ public:
     }
 };
 
+enum class XYDirection : size_t { X, Y };
+template<XYDirection dir>
+void RotateByAxis(Camera& camera, float rad)
+{
+    float angle = PI * rad / 180.0;
+    Vector3 rotAxis;
+    if constexpr (dir == XYDirection::Y)
+        rotAxis = Vector3{ 1.0f, 0.0f, 0.0f };
+    else
+        rotAxis = Vector3{ 0.0f, 1.0f, 0.0f };
+    Vector3 rotatedAxis = Vector3RotateByAxisAngle(Vector3Subtract(camera.target, camera.position), rotAxis, angle);
+    camera.position = Vector3Subtract(camera.target, rotatedAxis);
+}
+
 int main() {
     // Initialize window
     const int screenWidth = 1600;
@@ -202,18 +249,22 @@ int main() {
     InitWindow(screenWidth, screenHeight, "3D Sphere Connections");
 
     // Initialize camera
-    Camera3D camera = { 0 };
-    camera.position = Vector3{ -1.0f, 1.0f, 0.9f * CUBE_ZMAX };
-    camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
+    Camera3D camera;
+    Vector3 defaultCameraPos = Vector3{ -2.0f, 3.0f, -5.0f * CUBE_ZMAX };
+    Vector3 target = Vector3{ 0.0f, 0.0f, 0.0f };
+
+    camera.position = defaultCameraPos;
+    camera.target = target;
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
     camera.fovy = 30.0f; //45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    // Create scene with 20 spheres and connection threshold of 5.0
+    // Create scene with 30 spheres and connection threshold of 5.0
     Scene scene(30, 5.0f);
 
     SetTargetFPS(60);
     bool showGrid = false;
+    bool showBox = false;
 
     // Main game loop
     while (!WindowShouldClose()) {
@@ -221,16 +272,55 @@ int main() {
 
         BeginDrawing();
         ClearBackground(BLACK);
+        // UpdateCamera(&camera, CAMERA_CUSTOM);
         BeginMode3D(camera);
         scene.draw();
         if (showGrid)
-            DrawGrid(20, 1.0f);  // Draw a reference grid   
+        {
+            DrawGrid(200, 5.0f);  // Draw a reference grid   
+            DrawSphere(target, 2, ORANGE);
+        }
+        if (showBox)
+        {
+            Vector3 minPos = { -CUBE_BOUND, -CUBE_BOUND, CUBE_ZMIN };
+            Vector3 maxPos = { CUBE_BOUND, CUBE_BOUND, CUBE_ZMAX };
+            DrawBoundingBox({ minPos, maxPos }, YELLOW);
+            DrawSphere(minPos, 2, GREEN);
+            DrawSphere(maxPos, 2, RED);
+        }
         EndMode3D();
+
+        if (IsKeyPressedRepeat(KEY_LEFT) || IsKeyPressedRepeat(KEY_RIGHT) || IsKeyPressedRepeat(KEY_DOWN) || IsKeyPressedRepeat(KEY_UP))
+        {
+            constexpr float angleIncr = 0.1f;
+            if (IsKeyPressedRepeat(KEY_LEFT))
+                RotateByAxis<XYDirection::X>(camera, -angleIncr);
+            if (IsKeyPressedRepeat(KEY_RIGHT))
+                RotateByAxis<XYDirection::X>(camera, angleIncr);
+            if (IsKeyPressedRepeat(KEY_DOWN))
+                RotateByAxis<XYDirection::Y>(camera, -angleIncr);
+            if (IsKeyPressedRepeat(KEY_UP))
+                RotateByAxis<XYDirection::Y>(camera, angleIncr);
+        }
+        else
+        {
+            if (IsKeyPressedRepeat(KEY_PAGE_DOWN))
+                camera.position.z -= 1;
+            else if (IsKeyPressedRepeat(KEY_PAGE_UP))
+                camera.position.z += 1;
+            else if (IsKeyReleased(KEY_Y))  // this is z on a German keyboard!
+                camera.position = defaultCameraPos;
+        }
 
         if (IsKeyPressed(KEY_G))
             showGrid = !showGrid;
+        else if (IsKeyPressed(KEY_B))
+            showBox = !showBox;
 
         DrawFPS(10, 10);
+        std::ostringstream out;
+        out << "X:" << camera.position.x << " Y:" << camera.position.y << " Z:" << camera.position.z;
+        DrawText(out.str().c_str(), 20, 1150, 24, YELLOW);
         EndDrawing();
     }
 

@@ -6,3 +6,5 @@
 /sphereanim/out/build
 /sphereanim/vcpkg_installed
 /sphereanim/.vs
+/sphereanim/out/Ubuntu/build/linux-debug/.cmake/api/v1
+/sphereanim/out/Ubuntu/build/linux-debug/isenseconfig/627646038-iconfig.json
