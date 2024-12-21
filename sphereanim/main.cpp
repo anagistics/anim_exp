@@ -61,9 +61,12 @@ inline float Dist(Vector3 a, Vector3 b)
 constexpr float CUBE_BOUND = 20.0f;
 constexpr float CUBE_ZMAX = 10.0f;
 constexpr float CUBE_ZMIN = -50.0f;
-constexpr float SPHERE_RADIUS = 0.2f;
+constexpr float SPHERE_RADIUS = 0.5f;
 constexpr float MIN_SPEED = 0.01f;
 constexpr float MAX_SPEED = 0.02f;
+constexpr int WIRE_COUNT = 4;
+constexpr Vector3 MIN_POS = { -CUBE_BOUND, -CUBE_BOUND, CUBE_ZMIN };
+constexpr Vector3 MAX_POS = { CUBE_BOUND, CUBE_BOUND, CUBE_ZMAX };
 constexpr Color COLOR_LIGHT = BLUE;
 constexpr Color COLOR_DARK = colorScale(DARKBLUE, 0.3f);
 constexpr Color SPHERE_COLOR = COLOR_LIGHT;
@@ -186,9 +189,9 @@ public:
             // Update position with constant velocity
             sphere.position = plus(sphere.position, sphere.velocity);
             sphere.connectable = true;
-            fadeInOut<0>(sphere, rim_startxy, rim_endxy);
+            /*fadeInOut<0>(sphere, rim_startxy, rim_endxy);
             fadeInOut<1>(sphere, rim_startxy, rim_endxy);
-            fadeInOut<2>(sphere, rim_start, rim_end);
+            fadeInOut<2>(sphere, rim_start, rim_end);*/
 
             bounce(sphere.position.x, sphere.velocity.x, CUBE_BOUND/2.0);
             bounce(sphere.position.y, sphere.velocity.y, CUBE_BOUND/2.0);
@@ -201,7 +204,7 @@ public:
     void draw() {
         // Draw spheres
         for (const auto& sphere : spheres) {
-            DrawSphere(sphere.position, sphere.radius, sphere.color);
+            DrawSphereWires(sphere.position, sphere.radius, WIRE_COUNT, WIRE_COUNT, sphere.color);
         }
 
         // Draw connections
@@ -225,6 +228,15 @@ public:
                 }
             }
         }
+
+        Vector3 size_dummy = Vector3Subtract(MAX_POS, MIN_POS);
+        Color wall = BLACK;
+        wall.a = 200;
+        Vector3 z_offset{ 0.0f, 0.0f, 29.5f };
+        BeginBlendMode(BLEND_ALPHA);
+        DrawCube(Vector3Add(Vector3Add(MAX_POS, Vector3Scale(size_dummy, -0.5f)), z_offset), size_dummy.x, size_dummy.y, 0.25f, wall);
+        EndBlendMode();
+
     }
 };
 
@@ -260,7 +272,7 @@ int main() {
     camera.projection = CAMERA_PERSPECTIVE;
 
     // Create scene with 30 spheres and connection threshold of 5.0
-    Scene scene(30, 5.0f);
+    Scene scene(30, 7.0f);
 
     SetTargetFPS(60);
     bool showGrid = false;
@@ -282,11 +294,9 @@ int main() {
         }
         if (showBox)
         {
-            Vector3 minPos = { -CUBE_BOUND, -CUBE_BOUND, CUBE_ZMIN };
-            Vector3 maxPos = { CUBE_BOUND, CUBE_BOUND, CUBE_ZMAX };
-            DrawBoundingBox({ minPos, maxPos }, YELLOW);
-            DrawSphere(minPos, 2, GREEN);
-            DrawSphere(maxPos, 2, RED);
+            DrawBoundingBox({ MIN_POS, MAX_POS }, YELLOW);
+            DrawSphere(MIN_POS, 2, GREEN);
+            DrawSphere(MAX_POS, 2, RED);
         }
         EndMode3D();
 
